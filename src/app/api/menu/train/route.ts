@@ -20,24 +20,40 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { menuText, rulesText } = await req.json();
+    const { menuText, rulesText, imageBase64 } = await req.json();
 
-    if (!menuText) {
-      return NextResponse.json({ error: "O texto do cardápio é obrigatório." }, { status: 400 });
+    if (!menuText && !imageBase64) {
+      return NextResponse.json({ error: "Você deve enviar o texto ou a imagem do cardápio." }, { status: 400 });
     }
 
-    // 1. Enviar para a OpenAI estruturar o cardápio
+    // 1. Configurar o payload para a OpenAI dependendo se tem imagem ou não
+    let userMessageContent: any[] = [];
+    
+    if (menuText) {
+      userMessageContent.push({ type: "text", text: menuText });
+    }
+    
+    if (imageBase64) {
+      userMessageContent.push({
+        type: "image_url",
+        image_url: {
+          url: imageBase64
+        }
+      });
+    }
+
+    // 2. Enviar para a OpenAI estruturar o cardápio
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
-          content: "Você é um especialista em estruturação de dados. Extraia os itens do cardápio fornecido pelo usuário e retorne um objeto JSON contendo um array chamado 'items'. Cada item deve ter: 'name' (string), 'price' (number, valor exato sem R$), 'description' (string, breve descrição se houver), e 'category' (string)."
+          content: "Você é um especialista em estruturação de dados. Olhe para a imagem fornecida (se houver) e leia o texto fornecido (se houver). Extraia os itens do cardápio e retorne um objeto JSON contendo APENAS um array chamado 'items'. Cada item deve ter: 'name' (string), 'price' (number, valor exato sem R$), 'description' (string, breve descrição se houver), e 'category' (string)."
         },
         {
           role: "user",
-          content: menuText
+          content: userMessageContent
         }
       ]
     });
@@ -66,9 +82,10 @@ export async function POST(req: Request) {
       await supabase
         .from('menus')
         .update({
-          raw_menu: menuText,
+          raw_menu: menuText || "",
           structured_items: structuredItems,
           rules: rulesText || "",
+          image_data: imageBase64 ? "Imagem salva (Base64)" : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', existingMenu.id);
@@ -78,8 +95,9 @@ export async function POST(req: Request) {
         .from('menus')
         .insert([{
           clerk_user_id: userId,
-          raw_menu: menuText,
+          raw_menu: menuText || "",
           structured_items: structuredItems,
+          image_data: imageBase64 ? "Imagem salva (Base64)" : null,
           rules: rulesText || ""
         }]);
     }
