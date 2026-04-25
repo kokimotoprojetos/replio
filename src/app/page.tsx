@@ -1,66 +1,85 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import Link from 'next/link';
+import { Bot, Zap, Clock, Smartphone, ChevronRight } from 'lucide-react';
 
 export default function Home() {
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main>
+      <div className="bg-glow glow-top-right"></div>
+      <div className="bg-glow glow-bottom-left"></div>
+
+      <nav className="navbar">
+        <div className="container flex justify-between items-center w-full">
+          <div className="flex items-center gap-2">
+            <Bot size={28} className="text-gradient" />
+            <span style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.05em' }}>REPLIO</span>
+          </div>
+          <div className="flex gap-4">
+            <Link href="/login" className="btn btn-secondary">Entrar</Link>
+            <Link href="/register" className="btn btn-primary">Começar Grátis</Link>
+          </div>
+        </div>
+      </nav>
+
+      <section className="hero container">
+        <div className="flex-col items-center">
+          <div className="badge badge-success animate-fade-up" style={{ marginBottom: '1.5rem' }}>
+            <Zap size={14} style={{ marginRight: '0.25rem' }} /> NOVO: INTEGRAÇÃO EVOLUTION API
+          </div>
+          
+          <h1 className="h1 animate-fade-up delay-100">
+            Atendimento <span className="text-gradient">Automático</span><br />
+            para o seu Delivery.
+          </h1>
+          
+          <p className="animate-fade-up delay-200">
+            Conecte seu WhatsApp e deixe nossa Inteligência Artificial tirar pedidos, enviar cardápios e responder dúvidas dos seus clientes 24 horas por dia.
+          </p>
+          
+          <div className="flex gap-4 justify-center animate-fade-up delay-300">
+            <Link href="/register" className="btn btn-primary">
+              Criar meu Agente <ChevronRight size={18} />
+            </Link>
+            <Link href="#features" className="btn btn-secondary">
+              Ver como funciona
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" className="container" style={{ paddingBottom: '8rem' }}>
+        <div className="text-center animate-fade-up">
+          <h2 className="h2">Tudo que seu restaurante precisa</h2>
+          <p className="text-secondary" style={{ marginTop: '1rem' }}>
+            O Replio foi desenhado exclusivamente para operações de delivery.
           </p>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="grid-features">
+          <div className="glass-card animate-fade-up delay-100">
+            <Bot size={32} className="text-gradient" style={{ marginBottom: '1.5rem' }} />
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Agente Inteligente</h3>
+            <p className="text-secondary">
+              Nossa IA entende áudios, textos com erros de digitação e contexto. Ela sabe exatamente como conduzir o cliente até o fechamento do pedido.
+            </p>
+          </div>
+
+          <div className="glass-card animate-fade-up delay-200">
+            <Smartphone size={32} className="text-gradient" style={{ marginBottom: '1.5rem' }} />
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>WhatsApp Oficial</h3>
+            <p className="text-secondary">
+              Conexão via QR Code super rápida e estável através da poderosa Evolution API. Use seu próprio número de WhatsApp Business.
+            </p>
+          </div>
+
+          <div className="glass-card animate-fade-up delay-300">
+            <Clock size={32} className="text-gradient" style={{ marginBottom: '1.5rem' }} />
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Atendimento 24/7</h3>
+            <p className="text-secondary">
+              Nunca mais perca uma venda porque o atendente estava ocupado. O Replio atende múltiplos clientes simultaneamente, sem filas.
+            </p>
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+    </main>
   );
 }
