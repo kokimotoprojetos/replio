@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { QrCode, RefreshCw, LogOut, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
 export default function WhatsAppConnection() {
@@ -8,11 +8,33 @@ export default function WhatsAppConnection() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Checar status inicial
     checkStatus();
+    return () => stopPolling();
   }, []);
+
+  // Monitorar quando o QR Code aparece para começar a perguntar ao servidor
+  useEffect(() => {
+    if (qrCode && status !== 'connected') {
+      startPolling();
+    } else {
+      stopPolling();
+    }
+  }, [qrCode, status]);
+
+  const stopPolling = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  };
+
+  const startPolling = () => {
+    stopPolling();
+    pollingRef.current = setInterval(checkStatus, 3000); // Checa a cada 3 segundos
+  };
 
   const checkStatus = async () => {
     try {
@@ -20,10 +42,18 @@ export default function WhatsAppConnection() {
         headers: { 'apikey': '8N8CE7R5NG284DSWLIW5E9EQ5VT4AVP9PH9O8DBQ' }
       });
       const data = await res.json();
+      
       if (data.instance?.state === 'open') {
         setStatus('connected');
+        setQrCode(null);
+        stopPolling();
+      } else {
+        // Se já estávamos conectados e agora não estamos mais
+        if (status === 'connected') setStatus('disconnected');
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("Erro ao checar status:", e);
+    }
   };
 
   const generateQrCode = async () => {
@@ -79,7 +109,7 @@ export default function WhatsAppConnection() {
       </p>
 
       {message && (
-        <div className={`glass-card`} style={{ 
+        <div className="glass-card" style={{ 
           marginBottom: '1.5rem', padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
           borderLeft: `4px solid ${message.type === 'success' ? 'var(--primary)' : message.type === 'error' ? '#ef4444' : '#3b82f6'}`,
           maxWidth: '500px'
@@ -134,7 +164,10 @@ export default function WhatsAppConnection() {
             <p className="text-secondary" style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>
               Acesse <strong>Aparelhos Conectados</strong> no seu WhatsApp e escaneie o código acima.
             </p>
-            <button onClick={() => setQrCode(null)} className="btn btn-secondary">Cancelar</button>
+            <p style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, animation: 'pulse 2s infinite' }}>
+              Aguardando leitura do código...
+            </p>
+            <button onClick={() => setQrCode(null)} className="btn btn-secondary" style={{ marginTop: '1rem' }}>Cancelar</button>
           </div>
         )}
       </div>
