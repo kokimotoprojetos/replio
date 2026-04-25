@@ -21,9 +21,12 @@ export default function WhatsAppConnection() {
       
       if (data.qrcode) {
         setQrCode(data.qrcode);
+      } else if (data.connected) {
+        setStatus("connected");
+        alert("Seu WhatsApp já está conectado!");
       } else {
         setStatus("disconnected");
-        alert("Erro ao gerar QR Code. Verifique sua chave da Evolution API.");
+        alert(`Erro: ${data.details || "Não foi possível conectar com a Evolution API."}`);
       }
     } catch (error) {
       console.error(error);

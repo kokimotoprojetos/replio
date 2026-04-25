@@ -62,9 +62,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ qrcode: data.qrcode.base64 });
     } else if (data?.base64) {
        return NextResponse.json({ qrcode: data.base64 });
+    } else if (data?.instance?.state === 'open') {
+       return NextResponse.json({ connected: true, message: "WhatsApp já está conectado!" });
     } else {
-      console.log("Evolution API response:", data);
-      return NextResponse.json({ error: "Não foi possível gerar o QR Code", details: data }, { status: 500 });
+      console.error("Erro detalhado da Evolution API:", data);
+      return NextResponse.json({ 
+        error: "Não foi possível gerar o QR Code", 
+        details: data?.message || data?.error || "Resposta desconhecida",
+        fullResponse: data
+      }, { status: 500 });
     }
 
   } catch (error) {
