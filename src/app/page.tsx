@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Bot, Zap, Clock, Smartphone, ChevronRight } from 'lucide-react';
-import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
+import { Show, UserButton } from "@clerk/nextjs";
 
 export default function Home() {
   return (
@@ -16,12 +16,8 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-4">
             <Show when="signed-out">
-              <SignInButton>
-                <button className="btn btn-secondary">Entrar</button>
-              </SignInButton>
-              <SignUpButton>
-                <button className="btn btn-primary">Começar Grátis</button>
-              </SignUpButton>
+              <Link href="/sign-in" className="btn btn-secondary">Entrar</Link>
+              <Link href="/sign-up" className="btn btn-primary">Começar Grátis</Link>
             </Show>
             <Show when="signed-in">
               <Link href="/dashboard" className="btn btn-primary">Acessar Dashboard</Link>
@@ -48,11 +44,9 @@ export default function Home() {
           
           <div className="flex gap-4 justify-center animate-fade-up delay-300">
             <Show when="signed-out">
-              <SignUpButton>
-                <button className="btn btn-primary">
-                  Criar meu Agente <ChevronRight size={18} />
-                </button>
-              </SignUpButton>
+              <Link href="/sign-up" className="btn btn-primary">
+                Criar meu Agente <ChevronRight size={18} />
+              </Link>
             </Show>
             <Show when="signed-in">
               <Link href="/dashboard" className="btn btn-primary">
