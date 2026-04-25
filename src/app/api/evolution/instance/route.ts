@@ -50,6 +50,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         webhook: {
           url: `${baseUrl}/api/evolution/webhook`,
+          enabled: true,
           byEvents: false,
           base64: false,
           events: ["MESSAGES_UPSERT"]
