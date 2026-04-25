@@ -22,8 +22,13 @@ export async function POST(req: Request) {
 
     let data = await response.json();
 
-    // Se já existir, a API pode retornar erro informando, então chamamos o connect
-    if (!response.ok && data?.message?.includes("already exists")) {
+    // Se já existir, a API retorna um erro 403 informando "is already in use"
+    const isAlreadyInUse = !response.ok && (
+      (typeof data?.response?.message === 'object' && JSON.stringify(data.response.message).includes('already in use')) ||
+      (typeof data?.message === 'string' && data.message.includes('already'))
+    );
+
+    if (isAlreadyInUse) {
       response = await fetch(`${evolutionUrl}/instance/connect/${instanceName}`, {
         method: 'GET',
         headers: {
