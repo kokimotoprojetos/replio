@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
         
         <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <UserButton afterSignOutUrl="/" showName />
+          <UserButton showName />
         </div>
       </aside>
       

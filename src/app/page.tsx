@@ -25,7 +25,7 @@ export default function Home() {
             </Show>
             <Show when="signed-in">
               <Link href="/dashboard" className="btn btn-primary">Acessar Dashboard</Link>
-              <UserButton afterSignOutUrl="/" />
+              <UserButton />
             </Show>
           </div>
         </div>
