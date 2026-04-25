@@ -27,7 +27,7 @@ export async function POST(req: Request) {
       messages: [
         {
           role: "system",
-          content: "Você é um especialista em dados. Extraia os itens do cardápio. Retorne um JSON com um array 'items'. Cada item deve ter: 'name', 'price' (number), 'description'."
+          content: "Você é um especialista em estruturação de dados de restaurantes. Faça uma leitura profunda da imagem e/ou do texto fornecido. Identifique todos os itens do cardápio e agrupe-os logicamente. Retorne um objeto JSON contendo APENAS um array chamado 'items'. Cada item deve ter: 'name' (string), 'price' (number, valor exato numérico), 'description' (string, breve descrição ou ingredientes se houver) e OBRIGATORIAMENTE 'category' (string). A 'category' deve ser a classificação do item (Ex: Bebidas, Hambúrgueres Tradicionais, Sobremesas, Porções, etc). Analise o contexto para deduzir a categoria correta se ela não estiver explícita."
         },
         { role: "user", content: userMessageContent }
       ]
