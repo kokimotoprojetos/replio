@@ -16,10 +16,10 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-4">
             <Show when="signed-out">
-              <SignInButton mode="modal">
+              <SignInButton>
                 <button className="btn btn-secondary">Entrar</button>
               </SignInButton>
-              <SignUpButton mode="modal">
+              <SignUpButton>
                 <button className="btn btn-primary">Começar Grátis</button>
               </SignUpButton>
             </Show>
@@ -48,7 +48,7 @@ export default function Home() {
           
           <div className="flex gap-4 justify-center animate-fade-up delay-300">
             <Show when="signed-out">
-              <SignUpButton mode="modal">
+              <SignUpButton>
                 <button className="btn btn-primary">
                   Criar meu Agente <ChevronRight size={18} />
                 </button>
