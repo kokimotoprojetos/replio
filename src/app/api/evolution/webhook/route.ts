@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(req: Request) {
   try {
@@ -42,12 +48,41 @@ export async function POST(req: Request) {
         apiKey: process.env.OPENAI_API_KEY,
       });
 
+      const { data: menuData } = await supabase
+        .from('menus')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      let systemPrompt = "Você é um atendente virtual inteligente de Delivery.";
+      
+      if (menuData) {
+        systemPrompt += ` Seu nome é Replio. Seja natural e não muito robótico.
+        
+Abaixo está o nosso cardápio atual:
+${menuData.raw_menu}
+
+REGRAS DE ATENDIMENTO E PAGAMENTO:
+${menuData.rules}
+
+Seu objetivo é:
+1. Tirar dúvidas sobre o cardápio.
+2. Anotar o pedido do cliente.
+3. Coletar endereço de entrega.
+4. Coletar forma de pagamento seguindo as regras acima.
+5. Confirmar o pedido no final com um resumo claro.
+Se o cliente pedir o cardápio, envie a lista de itens.`;
+      } else {
+         systemPrompt += " Diga que seu cardápio tem: 1. Hambúrguer Simples (R$20) 2. Hambúrguer Duplo (R$28). Pergunte o que a pessoa deseja.";
+      }
+
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           { 
             role: "system", 
-            content: "Você é um atendente virtual de um Delivery chamado REPLIO. Responda de forma curta, natural e amigável, como um humano faria no WhatsApp. Não use formatações muito robóticas. Diga que seu cardápio tem: 1. Hambúrguer Simples (R$20) 2. Hambúrguer Duplo (R$28). Pergunte o que a pessoa deseja e tente pegar o endereço de entrega e a forma de pagamento (Dinheiro ou Pix). Se for dinheiro, pergunte se precisa de troco." 
+            content: systemPrompt
           },
           { role: "user", content: userText }
         ]
