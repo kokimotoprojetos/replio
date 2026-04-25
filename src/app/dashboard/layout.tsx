@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Bot, Home, MessageSquare, Settings, QrCode } from 'lucide-react';
+import { UserButton } from '@clerk/nextjs';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -10,7 +11,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>REPLIO</span>
         </div>
         
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" style={{ flex: 1 }}>
           <Link href="/dashboard" className="sidebar-link">
             <Home size={18} /> Resumo
           </Link>
@@ -24,6 +25,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Settings size={18} /> Configurações
           </Link>
         </nav>
+        
+        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <UserButton afterSignOutUrl="/" showName />
+        </div>
       </aside>
       
       <main className="dashboard-content">
