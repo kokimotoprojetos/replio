@@ -10,10 +10,13 @@ const supabase = createClient(
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    console.log("Evento recebido do Webhook:", body.event);
     
-    // O webhook da Evolution API manda o body no formato: { event: "messages.upsert", data: { ... } }
-    if (body.event !== "messages.upsert") {
-      return NextResponse.json({ status: 'ignored' });
+    // Suportar tanto minúsculas quanto maiúsculas (Evolution v2 usa minúsculas por padrão, mas pode variar)
+    const event = body.event?.toLowerCase();
+    
+    if (event !== "messages.upsert") {
+      return NextResponse.json({ status: 'ignored', event });
     }
 
     const messageData = body.data;
@@ -98,22 +101,36 @@ Se o cliente pedir o cardápio, envie a lista de itens.`;
     const evolutionUrl = process.env.EVOLUTION_API_URL;
     const globalApiKey = process.env.EVOLUTION_API_KEY;
 
-    await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": globalApiKey as string
-      },
-      body: JSON.stringify({
-        number: remoteJid,
-        options: {
-          delay: 1500, // Simula o tempo de digitação (1,5 segundos)
+    if (!evolutionUrl || !globalApiKey) {
+      console.error("ERRO: Variáveis de ambiente da Evolution API não configuradas na Vercel!");
+      return NextResponse.json({ error: "Configuração incompleta" }, { status: 500 });
+    }
+
+    try {
+      const sendRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": globalApiKey as string
         },
-        textMessage: {
-          text: botReply
-        }
-      })
-    });
+        body: JSON.stringify({
+          number: remoteJid,
+          options: {
+            delay: 1500, // Simula o tempo de digitação (1,5 segundos)
+          },
+          textMessage: {
+            text: botReply
+          }
+        })
+      });
+
+      if (!sendRes.ok) {
+        const errData = await sendRes.json();
+        console.error("Erro ao enviar mensagem pela Evolution API:", errData);
+      }
+    } catch (sendError) {
+      console.error("Falha catastrófica ao tentar enviar mensagem:", sendError);
+    }
 
     return NextResponse.json({ status: 'success', replied: true });
   } catch (error) {
