@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Bot, Zap, Clock, Smartphone, ChevronRight } from 'lucide-react';
-import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
 
 export default function Home() {
   return (
@@ -15,18 +15,18 @@ export default function Home() {
             <span style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.05em' }}>REPLIO</span>
           </div>
           <div className="flex items-center gap-4">
-            <SignedOut>
+            <Show when="signed-out">
               <SignInButton mode="modal">
                 <button className="btn btn-secondary">Entrar</button>
               </SignInButton>
               <SignUpButton mode="modal">
                 <button className="btn btn-primary">Começar Grátis</button>
               </SignUpButton>
-            </SignedOut>
-            <SignedIn>
+            </Show>
+            <Show when="signed-in">
               <Link href="/dashboard" className="btn btn-primary">Acessar Dashboard</Link>
               <UserButton afterSignOutUrl="/" />
-            </SignedIn>
+            </Show>
           </div>
         </div>
       </nav>
@@ -47,18 +47,18 @@ export default function Home() {
           </p>
           
           <div className="flex gap-4 justify-center animate-fade-up delay-300">
-            <SignedOut>
+            <Show when="signed-out">
               <SignUpButton mode="modal">
                 <button className="btn btn-primary">
                   Criar meu Agente <ChevronRight size={18} />
                 </button>
               </SignUpButton>
-            </SignedOut>
-            <SignedIn>
+            </Show>
+            <Show when="signed-in">
               <Link href="/dashboard" className="btn btn-primary">
                 Acessar Dashboard <ChevronRight size={18} />
               </Link>
-            </SignedIn>
+            </Show>
             <Link href="#features" className="btn btn-secondary">
               Ver como funciona
             </Link>
