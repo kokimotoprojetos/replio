@@ -77,13 +77,14 @@ SUA MISSÃO NO ATENDIMENTO:
 1. **Saudação**: Sempre receba o cliente com alegria.
 2. **Consultoria**: Tire dúvidas sobre o cardápio com inteligência. Se perguntarem se algo é bom, dê uma sugestão vendedora baseada no que você sabe.
 3. **Anotação de Pedido**: Vá anotando os itens. Se faltar algo (como o ponto da carne ou acompanhamento), pergunte educadamente.
-4. **Logística**: Peça o endereço de entrega de forma natural quando o pedido estiver quase pronto.
+4. **Logística**: Peça o Nome do Cliente e a Localização (Google Maps ou endereço fixo) de forma natural quando o pedido estiver quase pronto.
 5. **Pagamento**: Informe as formas de pagamento e pergunte qual o cliente prefere.
-6. **Fechamento**: Antes de finalizar, mande um resumo bonito do pedido com o valor total e pergunte se está tudo certo.
+6. **Confirmação Crítica**: Antes de finalizar, você DEVE mostrar um resumo com: Itens, Nome, Pagamento e Endereço. Pergunte explicitamente: "As informações acima estão corretas para realizarmos seu pedido?".
+7. **Fechamento**: Assim que o cliente confirmar ("sim", "está correto", etc), responda com uma mensagem de agradecimento e use o código: [SAVE_ORDER: {"name": "...", "payment": "...", "location": "...", "total": 0, "items": [...]}]
 
-COMANDO ESPECIAL:
+COMANDOS ESPECIAIS:
 - Se o cliente pedir para VER o cardápio, fotos dos produtos ou opções de preços, responda APENAS com o código: [SEND_MENU_IMAGES]
-- Se ele já estiver com o cardápio ou apenas perguntando de um item específico, continue a conversa normalmente sem usar o código.`;
+- Quando o cliente confirmar o pedido final após o resumo, envie o código: [SAVE_ORDER: {"name": "Nome", "payment": "Forma", "location": "Link Maps/Endereço", "total": Valor, "items": [{"n": "Item", "p": Preço}]}]`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -106,6 +107,36 @@ COMANDO ESPECIAL:
     }
 
     try {
+      // Se a IA decidiu salvar um pedido
+      if (botReply.includes("[SAVE_ORDER:")) {
+        const orderMatch = botReply.match(/\[SAVE_ORDER: (\{.*?\})\]/);
+        if (orderMatch && orderMatch[1]) {
+          try {
+            const orderData = JSON.parse(orderMatch[1]);
+            
+            // Buscar o clerk_user_id associado a este menu/instância
+            // Para simplificar no MVP, pegamos o último menu. 
+            // Em produção, isso seria mapeado pela instância.
+            const { data: menu } = await supabase.from('menus').select('clerk_user_id').limit(1).single();
+
+            if (menu?.clerk_user_id) {
+              await supabase.from('orders').insert([{
+                clerk_user_id: menu.clerk_user_id,
+                customer_name: orderData.name,
+                payment_method: orderData.payment,
+                delivery_location: orderData.location,
+                total_value: orderData.total,
+                order_details: { items: orderData.items }
+              }]);
+            }
+          } catch (e) {
+            console.error("Erro ao processar JSON do pedido:", e);
+          }
+          // Limpa o código da resposta para o cliente
+          botReply = botReply.replace(/\[SAVE_ORDER: .*?\]/, "").trim();
+        }
+      }
+
       // Se a IA decidiu enviar o cardápio
       if (botReply.includes("[SEND_MENU_IMAGES]")) {
         const { data: menuData } = await supabase

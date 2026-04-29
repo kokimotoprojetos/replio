@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Bot, Home, MessageSquare, Settings, QrCode, List, Globe } from 'lucide-react';
+import { Bot, Home, MessageSquare, Settings, QrCode, List, Globe, ShoppingBag } from 'lucide-react';
 import { UserButton } from '@clerk/nextjs';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -14,6 +14,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <nav className="sidebar-nav" style={{ flex: 1 }}>
           <Link href="/dashboard" className="sidebar-link">
             <Home size={18} /> Resumo
+          </Link>
+          <Link href="/dashboard/orders" className="sidebar-link">
+            <ShoppingBag size={18} /> Pedidos
           </Link>
           <Link href="/dashboard/whatsapp" className="sidebar-link">
             <QrCode size={18} /> Conexão WhatsApp
