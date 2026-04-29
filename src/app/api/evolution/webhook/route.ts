@@ -134,11 +134,11 @@ COMANDO ESPECIAL:
               headers: { "Content-Type": "application/json", "apikey": globalApiKey },
               body: JSON.stringify({
                 number: remoteJid,
-                mediaMessage: {
-                  mediatype: "image",
-                  media: base64Data,
-                  caption: "Aqui está o nosso cardápio! 📝"
-                }
+                mediatype: "image",
+                mimetype: "image/png",
+                media: base64Data,
+                fileName: "cardapio.png",
+                caption: "Aqui está o nosso cardápio! 📝"
               })
             });
           }
