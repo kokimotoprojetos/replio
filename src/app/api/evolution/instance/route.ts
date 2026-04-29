@@ -22,18 +22,31 @@ export async function POST(req: Request) {
 
     let data = await response.json();
 
-    // Se já existir, a API retorna um erro 403 informando "is already in use"
+    // Se já existir, deletamos e criamos de novo para garantir uma instância "limpa"
     const isAlreadyInUse = !response.ok && (
       (typeof data?.response?.message === 'object' && JSON.stringify(data.response.message).includes('already in use')) ||
       (typeof data?.message === 'string' && data.message.includes('already'))
     );
 
     if (isAlreadyInUse) {
-      response = await fetch(`${evolutionUrl}/instance/connect/${instanceName}`, {
-        method: 'GET',
+      // Deletar a antiga
+      await fetch(`${evolutionUrl}/instance/delete/${instanceName}`, {
+        method: 'DELETE',
+        headers: { 'apikey': globalApiKey as string }
+      });
+
+      // Criar a nova
+      response = await fetch(`${evolutionUrl}/instance/create`, {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'apikey': globalApiKey as string
-        }
+        },
+        body: JSON.stringify({
+          instanceName,
+          qrcode: true,
+          integration: "WHATSAPP-BAILEYS"
+        })
       });
       data = await response.json();
     }

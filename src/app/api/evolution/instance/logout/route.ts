@@ -6,8 +6,8 @@ export async function POST(req: Request) {
     const evolutionUrl = process.env.EVOLUTION_API_URL;
     const globalApiKey = process.env.EVOLUTION_API_KEY;
 
-    // Comando para deslogar a instância na Evolution API
-    const response = await fetch(`${evolutionUrl}/instance/logout/${instanceName}`, {
+    // Comando para DELETAR a instância na Evolution API (Garante que a próxima conexão seja limpa)
+    const response = await fetch(`${evolutionUrl}/instance/delete/${instanceName}`, {
       method: 'DELETE',
       headers: {
         'apikey': globalApiKey as string
