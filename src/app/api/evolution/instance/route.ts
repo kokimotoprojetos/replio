@@ -40,7 +40,9 @@ export async function POST(req: Request) {
 
     // Configurar o webhook logo após a tentativa de criação
     // Em produção, deve ser o URL real onde o Next.js está hospedado (ex: https://replio.com.br/api/evolution/webhook)
-    const baseUrl = req.headers.get('host') ? `https://${req.headers.get('host')}` : 'http://localhost:3000';
+    const host = req.headers.get('host');
+    const protocol = host?.includes('localhost') ? 'http' : 'https';
+    const baseUrl = host ? `${protocol}://${host}` : 'http://localhost:3000';
     await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
       method: 'POST',
       headers: {

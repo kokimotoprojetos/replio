@@ -118,9 +118,7 @@ Se o cliente pedir o cardápio, envie a lista de itens.`;
           options: {
             delay: 1500, // Simula o tempo de digitação (1,5 segundos)
           },
-          textMessage: {
-            text: botReply
-          }
+          text: botReply
         })
       });
 
