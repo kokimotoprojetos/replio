@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { newItems, rulesText } = await req.json();
+    const { newItems, rulesText, imageBase64 } = await req.json();
 
     if (!newItems || !Array.isArray(newItems)) {
       return NextResponse.json({ error: "Nenhum item para salvar." }, { status: 400 });
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     // Buscar menu existente para mesclar
     const { data: existingMenu } = await supabase
       .from('menus')
-      .select('id, structured_items, rules, raw_menu')
+      .select('id, structured_items, rules, raw_menu, image_data')
       .eq('clerk_user_id', userId)
       .single();
 
@@ -39,6 +39,7 @@ export async function POST(req: Request) {
           structured_items: { items: mergedItems },
           rules: rulesText !== undefined ? rulesText : existingMenu.rules,
           raw_menu: updatedRawMenu,
+          image_data: imageBase64 || existingMenu.image_data,
           updated_at: new Date().toISOString()
         })
         .eq('id', existingMenu.id);
@@ -49,7 +50,8 @@ export async function POST(req: Request) {
           clerk_user_id: userId,
           structured_items: { items: mergedItems },
           rules: rulesText || "",
-          raw_menu: updatedRawMenu
+          raw_menu: updatedRawMenu,
+          image_data: imageBase64 || null
         }]);
     }
 

@@ -82,7 +82,7 @@ export default function MenuPage() {
       const res = await fetch('/api/menu/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newItems: pendingItems, rulesText }),
+        body: JSON.stringify({ newItems: pendingItems, rulesText, imageBase64 }),
       });
 
       if (res.ok) {
