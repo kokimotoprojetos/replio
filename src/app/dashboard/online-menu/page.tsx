@@ -1,30 +1,72 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Globe, Copy, ExternalLink, QrCode, ImageIcon } from 'lucide-react';
+import { ImageIcon, Trash2, Plus, Save, Loader2, CheckCircle2 } from 'lucide-react';
 
 export default function OnlineMenuPage() {
-  const [menuData, setMenuData] = useState<any>(null);
+  const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/menu/get')
       .then(res => res.json())
       .then(data => {
-        if (data.menuData) {
-          setMenuData(data.menuData);
+        if (data.menuData?.image_data) {
+          try {
+            // Tenta parsear como JSON (array de imagens)
+            const parsed = JSON.parse(data.menuData.image_data);
+            setImages(Array.isArray(parsed) ? parsed : [data.menuData.image_data]);
+          } catch {
+            // Se não for JSON, trata como string única
+            setImages([data.menuData.image_data]);
+          }
         }
         setLoading(false);
       });
   }, []);
 
-  const publicUrl = menuData ? `${window.location.origin}/menu/${menuData.id}` : '';
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(publicUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImages(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const saveImages = async () => {
+    setSaving(true);
+    setStatus(null);
+    try {
+      const res = await fetch('/api/menu/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          newItems: [], // Não estamos adicionando novos itens aqui
+          imageBase64: JSON.stringify(images) 
+        }),
+      });
+
+      if (res.ok) {
+        setStatus({ type: 'success', message: 'Imagens do cardápio salvas com sucesso!' });
+      } else {
+        setStatus({ type: 'error', message: 'Erro ao salvar imagens.' });
+      }
+    } catch (err) {
+      setStatus({ type: 'error', message: 'Erro de conexão.' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) return <div className="p-8">Carregando...</div>;
@@ -32,67 +74,69 @@ export default function OnlineMenuPage() {
   return (
     <div className="animate-fade-up">
       <header style={{ marginBottom: '2rem' }}>
-        <h1 className="h2 text-gradient">Cardápio Online</h1>
+        <h1 className="h2 text-gradient">Imagens do Cardápio</h1>
         <p className="text-secondary" style={{ marginTop: '0.5rem' }}>
-          Gerencie o link público do seu cardápio e visualize sua imagem salva.
+          Suba as fotos do seu cardápio aqui. O Agente IA enviará essas imagens automaticamente quando o cliente pedir o cardápio.
         </p>
       </header>
 
-      <div className="grid-features" style={{ marginTop: 0, gridTemplateColumns: '1fr 1fr' }}>
-        {/* Link e Compartilhamento */}
-        <div className="glass-card">
-          <div className="flex items-center gap-2" style={{ marginBottom: '1.5rem' }}>
-            <Globe className="text-primary" size={24} />
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Seu Link Público</h2>
-          </div>
+      {status && (
+        <div className="glass-card" style={{ marginBottom: '2rem', padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderLeft: `4px solid ${status.type === 'success' ? 'var(--primary)' : '#ef4444'}` }}>
+          {status.type === 'success' ? <CheckCircle2 color="var(--primary)" /> : <ImageIcon color="#ef4444" />}
+          <span>{status.message}</span>
+        </div>
+      )}
 
-          <div style={{ background: 'var(--bg-dark)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1.5rem', wordBreak: 'break-all' }}>
-            <code style={{ fontSize: '0.875rem', color: 'var(--primary)' }}>{publicUrl || 'Nenhum menu configurado'}</code>
-          </div>
-
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button className="btn btn-primary" onClick={copyToClipboard} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-              <Copy size={18} style={{ marginRight: '0.5rem' }} />
-              {copied ? 'Copiado!' : 'Copiar Link'}
-            </button>
-            <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ flex: 1, display: 'flex', justifyContent: 'center', textDecoration: 'none' }}>
-              <ExternalLink size={18} style={{ marginRight: '0.5rem' }} />
-              Abrir
-            </a>
-          </div>
-
-          <div style={{ marginTop: '2rem', textAlign: 'center', padding: '2rem', background: 'white', borderRadius: '1rem', display: 'inline-block', width: '100%' }}>
-             <p style={{ color: 'black', marginBottom: '1rem', fontWeight: 600 }}>QR Code para Clientes</p>
-             <div style={{ background: '#f3f4f6', padding: '1rem', borderRadius: '0.5rem', display: 'inline-block' }}>
-                <QrCode size={150} color="black" />
-             </div>
-             <p style={{ color: '#6b7280', marginTop: '1rem', fontSize: '0.75rem' }}>Aponte a câmera para testar</p>
-          </div>
+      <div className="glass-card">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+          {images.map((img, idx) => (
+            <div key={idx} className="relative group" style={{ position: 'relative', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid var(--border-color)', aspectRatio: '3/4' }}>
+              <img src={img} alt={`Menu ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <button 
+                onClick={() => removeImage(idx)}
+                style={{ 
+                  position: 'absolute', 
+                  top: '0.5rem', 
+                  right: '0.5rem', 
+                  background: '#ef4444', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '0.25rem', 
+                  padding: '0.25rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
+          
+          <label style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            border: '2px dashed var(--border-color)', 
+            borderRadius: '0.5rem', 
+            aspectRatio: '3/4',
+            cursor: 'pointer',
+            transition: 'border-color 0.2s'
+          }} className="hover:border-primary">
+            <Plus size={32} className="text-secondary" />
+            <span className="text-secondary" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Adicionar Foto</span>
+            <input type="file" accept="image/*" multiple onChange={handleImageUpload} style={{ display: 'none' }} />
+          </label>
         </div>
 
-        {/* Visualização da Imagem */}
-        <div className="glass-card">
-          <div className="flex items-center gap-2" style={{ marginBottom: '1.5rem' }}>
-            <ImageIcon className="text-gradient" size={24} />
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Imagem do Cardápio</h2>
-          </div>
-
-          {menuData?.image_data ? (
-            <div style={{ borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-              <img 
-                src={menuData.image_data} 
-                alt="Cardápio" 
-                style={{ width: '100%', height: 'auto', display: 'block' }} 
-              />
-            </div>
-          ) : (
-            <div style={{ padding: '4rem 2rem', textAlign: 'center', border: '1px dashed var(--border-color)', borderRadius: '0.5rem' }}>
-              <ImageIcon size={48} className="text-secondary" style={{ margin: '0 auto 1rem' }} />
-              <p className="text-secondary">Nenhuma imagem de cardápio armazenada ainda.</p>
-              <p className="text-secondary" style={{ fontSize: '0.875rem' }}>Vá em "Cardápio & Regras" e faça um upload.</p>
-            </div>
-          )}
-        </div>
+        <button 
+          className="btn btn-primary" 
+          onClick={saveImages} 
+          disabled={saving} 
+          style={{ width: '100%', maxWidth: '300px', margin: '0 auto', display: 'flex', gap: '0.5rem' }}
+        >
+          {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+          Salvar Alterações
+        </button>
       </div>
     </div>
   );

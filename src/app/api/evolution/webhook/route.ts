@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       if (menuData) {
         systemPrompt += ` Seu nome é Replio. Seja natural e não muito robótico.
         
-Abaixo está o nosso cardápio atual:
+Abaixo está o nosso cardápio atual (para sua referência interna):
 ${menuData.raw_menu}
 
 REGRAS DE ATENDIMENTO E PAGAMENTO:
@@ -75,7 +75,8 @@ Seu objetivo é:
 3. Coletar endereço de entrega.
 4. Coletar forma de pagamento seguindo as regras acima.
 5. Confirmar o pedido no final com um resumo claro.
-Se o cliente pedir o cardápio, envie a lista de itens.`;
+
+IMPORTANTE: Se o cliente pedir o cardápio, envie EXATAMENTE a mensagem: "[SEND_MENU_IMAGES]". Não diga mais nada além disso se o foco for apenas ver o cardápio.`;
       } else {
          systemPrompt += " Diga que seu cardápio tem: 1. Hambúrguer Simples (R$20) 2. Hambúrguer Duplo (R$28). Pergunte o que a pessoa deseja.";
       }
@@ -83,18 +84,12 @@ Se o cliente pedir o cardápio, envie a lista de itens.`;
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
-          { 
-            role: "system", 
-            content: systemPrompt
-          },
+          { role: "system", content: systemPrompt },
           { role: "user", content: userText }
         ]
       });
       
       botReply = completion.choices[0]?.message?.content || "Desculpe, tive um problema para processar sua mensagem.";
-    } else {
-      // Resposta de fallback caso não tenha API key configurada
-      botReply = `Olá! Sou o agente IA de teste do REPLIO. Eu recebi sua mensagem: "${userText}".\n\n(Aviso para o lojista: Configure sua OPENAI_API_KEY no arquivo .env.local para habilitar o ChatGPT!).`;
     }
 
     // Enviar a resposta de volta usando Evolution API
@@ -102,32 +97,66 @@ Se o cliente pedir o cardápio, envie a lista de itens.`;
     const globalApiKey = process.env.EVOLUTION_API_KEY;
 
     if (!evolutionUrl || !globalApiKey) {
-      console.error("ERRO: Variáveis de ambiente da Evolution API não configuradas na Vercel!");
+      console.error("ERRO: Variáveis de ambiente da Evolution API não configuradas!");
       return NextResponse.json({ error: "Configuração incompleta" }, { status: 500 });
     }
 
     try {
-      const sendRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
+      // Se a IA decidiu enviar o cardápio
+      if (botReply.includes("[SEND_MENU_IMAGES]")) {
+        const { data: menuData } = await supabase
+          .from('menus')
+          .select('image_data')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (menuData?.image_data) {
+          let images: string[] = [];
+          try {
+            const parsed = JSON.parse(menuData.image_data);
+            images = Array.isArray(parsed) ? parsed : [menuData.image_data];
+          } catch {
+            images = [menuData.image_data];
+          }
+
+          // Enviar cada imagem
+          for (const imgBase64 of images) {
+            // Remover o prefixo data:image/xxx;base64, se existir
+            const base64Data = imgBase64.includes('base64,') ? imgBase64.split('base64,')[1] : imgBase64;
+            
+            await fetch(`${evolutionUrl}/message/sendMedia/${instanceName}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "apikey": globalApiKey },
+              body: JSON.stringify({
+                number: remoteJid,
+                mediaMessage: {
+                  mediatype: "image",
+                  media: base64Data,
+                  caption: "Aqui está o nosso cardápio! 📝"
+                }
+              })
+            });
+          }
+          return NextResponse.json({ status: 'success', replied: 'images_sent' });
+        } else {
+          botReply = "Ainda não cadastramos as fotos do nosso cardápio, mas posso te ajudar com os itens!";
+        }
+      }
+
+      // Envio de texto normal (fallback ou conversa comum)
+      await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": globalApiKey as string
-        },
+        headers: { "Content-Type": "application/json", "apikey": globalApiKey },
         body: JSON.stringify({
           number: remoteJid,
-          options: {
-            delay: 1500, // Simula o tempo de digitação (1,5 segundos)
-          },
+          options: { delay: 1500 },
           text: botReply
         })
       });
 
-      if (!sendRes.ok) {
-        const errData = await sendRes.json();
-        console.error("Erro ao enviar mensagem pela Evolution API:", errData);
-      }
     } catch (sendError) {
-      console.error("Falha catastrófica ao tentar enviar mensagem:", sendError);
+      console.error("Falha ao enviar mensagem:", sendError);
     }
 
     return NextResponse.json({ status: 'success', replied: true });
