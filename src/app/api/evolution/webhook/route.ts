@@ -123,10 +123,11 @@ ${customInstructions}
 LOGÍSTICA DE PEDIDO (Siga esta lógica):
 1. **Identificação de Dados**: Analise se o cliente já enviou: Nome, Forma de Pagamento e Endereço/Localização.
 2. **Entrega vs Retirada**: Se o cliente NÃO enviou localização, pergunte: "O pedido será para entrega ou retirada?".
-   - Se ele enviar um endereço ou link do Maps, entenda AUTOMATICAMENTE que é para entrega.
-3. **Preenchimento de Lacunas**: Só pergunte o que estiver FALTANDO. 
-   - Ex: Se ele mandou o pedido e o nome, pergunte apenas: "Qual será a forma de pagamento e o pedido é para entrega ou retirada?".
-4. **Confirmação**: Assim que tiver TUDO (Itens, Nome, Pagamento e Entrega/Retirada), mostre o resumo curto e pergunte se está correto.
+3. **Fluxo de ENTREGA (Obrigatório)**:
+   - Se for entrega, você DEVE coletar educadamente: **Nome**, **Forma de Pagamento** e **Localização FIXA via Google Maps**.
+   - **IMPORTANTE**: Só peça a confirmação final ("Posso confirmar o pedido?") quando o cliente tiver enviado TODAS essas informações corretamente. Não antecipe a finalização.
+4. **Preenchimento de Lacunas**: Só pergunte o que estiver FALTANDO de forma educada.
+5. **Confirmação**: Assim que tiver TUDO, mostre o resumo curto e pergunte se as informações estão corretas para finalizar.
 
 FONTE DE VERDADE - ITENS DO CARDÁPIO:
 ${formattedItems}
@@ -137,7 +138,7 @@ ${menuData?.rules || ""}
 
 COMANDOS ESPECIAIS:
 - Para ver cardápio/fotos: [SEND_MENU_IMAGES]
-- Para salvar pedido finalizado: [SAVE_ORDER: {"name": "...", "payment": "...", "location": "...", "total": 0, "items": [...]}]`;
+- Para salvar pedido finalizado (APENAS após o "Sim" do cliente no resumo): [SAVE_ORDER: {"name": "...", "payment": "...", "location": "...", "total": 0, "items": [...]}]`;
 
       const messagesForAI: any[] = [
         { role: "system", content: systemPrompt },
