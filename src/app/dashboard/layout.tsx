@@ -30,6 +30,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Link href="/dashboard/items" className="sidebar-link">
             <List size={18} /> Meus Itens
           </Link>
+          <Link href="/dashboard/agent-settings" className="sidebar-link">
+            <Bot size={18} /> Agente & Horários
+          </Link>
           <Link href="/dashboard/settings" className="sidebar-link">
             <Settings size={18} /> Configurações
           </Link>

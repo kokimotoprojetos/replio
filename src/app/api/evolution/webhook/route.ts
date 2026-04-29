@@ -43,13 +43,59 @@ export async function POST(req: Request) {
 
     console.log(`Mensagem recebida de ${remoteJid}: ${userText}`);
 
-    // Integração com OpenAI usando o SDK oficial
+    // 1. Salvar mensagem do usuário no histórico
+    await supabase.from('chat_history').insert([
+      { remote_jid: remoteJid, role: 'user', content: userText }
+    ]);
+
+    // 2. Buscar histórico recente (últimas 10 mensagens)
+    const { data: history } = await supabase
+      .from('chat_history')
+      .select('role, content')
+      .eq('remote_jid', remoteJid)
+      .order('created_at', { ascending: true })
+      .limit(10);
+
+    // 3. Buscar Configurações do Agente e Horários
+    const { data: settings } = await supabase
+      .from('business_settings')
+      .select('*')
+      .limit(1) // Em produção, buscaria pelo owner da instância
+      .single();
+
+    // 4. Verificar Horário de Funcionamento
+    const now = new Date();
+    const dayName = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+    const businessHours = settings?.business_hours?.[dayName];
+    let isOpen = true;
+    let businessStatusMsg = "";
+
+    if (businessHours) {
+      if (businessHours.closed) {
+        isOpen = false;
+        businessStatusMsg = "Estamos fechados hoje.";
+      } else {
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+        const [openH, openM] = businessHours.open.split(':').map(Number);
+        const [closeH, closeM] = businessHours.close.split(':').map(Number);
+        const openTime = openH * 60 + openM;
+        let closeTime = closeH * 60 + closeM;
+        
+        if (closeTime <= openTime) closeTime += 24 * 60; // Lida com horários que passam da meia-noite
+        
+        if (currentTime < openTime || currentTime > closeTime) {
+          isOpen = false;
+          const status = currentTime < openTime ? "Ainda não abrimos." : "Já fechamos por hoje.";
+          businessStatusMsg = `${status} Nosso horário de hoje é das ${businessHours.open} às ${businessHours.close}.`;
+        }
+      }
+    }
+
+    // Integração com OpenAI
     let botReply = "";
     
     if (process.env.OPENAI_API_KEY) {
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
       const { data: menuData } = await supabase
         .from('menus')
@@ -58,54 +104,56 @@ export async function POST(req: Request) {
         .limit(1)
         .single();
 
-      // Formata os itens estruturados para a IA ler "profundamente"
       const itemsList = menuData?.structured_items?.items || [];
       const formattedItems = itemsList.map((i: any) => `- ${i.name} (${i.category || 'Geral'}): R$ ${i.price}`).join('\n');
 
-      let systemPrompt = `Você é o Replio, o atendente mais inteligente e eficiente de um Delivery. 
-Sua principal habilidade é conhecer o cardápio PROFUNDAMENTE e entender cada detalhe do que o cliente pede.
+      const agentName = settings?.agent_name || 'Replio';
+      const customInstructions = settings?.agent_instructions || 'Seja simpático e ajude o cliente com o pedido.';
+
+      let systemPrompt = `Você é o ${agentName}, o atendente virtual inteligente deste Delivery.
+      
+STATUS ATUAL DO RESTAURANTE: ${isOpen ? "ABERTO" : "FECHADO"}
+${!isOpen ? `AVISO: ${businessStatusMsg}. Informe isso ao cliente de forma educada se ele tentar fazer um pedido agora.` : ""}
+
+SUA PERSONALIDADE E INSTRUÇÕES:
+${customInstructions}
+- Leia com ATENÇÃO todas as mensagens do histórico para responder de forma coesa.
+- Se o cliente mandou várias mensagens seguidas, responda a todas de uma vez em uma única mensagem organizada.
 
 FONTE DE VERDADE - ITENS DO CARDÁPIO:
-${formattedItems || "Nenhum item cadastrado ainda."}
+${formattedItems}
 
-CONHECIMENTO ADICIONAL / DESCRIÇÕES:
+REGRAS E CONHECIMENTO ADICIONAL:
 ${menuData?.raw_menu || ""}
+${menuData?.rules || ""}
 
-REGRAS DO ESTABELECIMENTO:
-${menuData?.rules || "Aceitamos Pix e Cartão. Entrega a combinar."}
-
-DIRETRIZES DE INTELIGÊNCIA:
-- Analise cada palavra do cliente. Se ele pedir um "X-Tudo sem cebola", verifique se o X-Tudo existe e anote a observação.
-- Se o cliente pedir algo que NÃO está na lista acima, informe educadamente que não temos esse item hoje e sugira o que mais se aproxima.
-- Entenda sinônimos: se o cliente pedir "uma breja", ele está se referindo a itens na categoria "Bebidas" ou "Cervejas".
-- Seja proativo: se o cliente pedir um hambúrguer, pergunte se ele gostaria de uma bebida ou batata para acompanhar.
-
-DIRETRIZES DE PERSONALIDADE:
-- Seja amigável, educado e use um tom leve (pode usar alguns emojis).
-- Não seja robótico. Tenha uma conversa fluída.
-
-SUA MISSÃO NO ATENDIMENTO:
-1. **Saudação**: Sempre receba o cliente com alegria.
-2. **Consultoria**: Use seu conhecimento profundo dos itens acima para tirar dúvidas.
-3. **Anotação de Pedido**: Anote os itens e preços com precisão total.
-4. **Logística**: Peça o Nome do Cliente e a Localização de forma natural.
-5. **Pagamento**: Pergunte a forma de preferência.
-6. **Confirmação Crítica**: Mostre um resumo com: Itens, Nome, Pagamento e Endereço. Pergunte: "As informações acima estão corretas?".
-7. **Fechamento**: Após o "Sim" do cliente, use o código: [SAVE_ORDER: {"name": "...", "payment": "...", "location": "...", "total": 0, "items": [...]}]
+SUA MISSÃO:
+1. Saudação inicial.
+2. Consultoria baseada nos itens acima.
+3. Anotar o pedido (Nome, Pagamento, Localização).
+4. Se o restaurante estiver FECHADO, você pode tirar dúvidas, mas avise que não estamos aceitando pedidos no momento.
+5. Confirmação do resumo antes de finalizar.
 
 COMANDOS ESPECIAIS:
-- Se o cliente pedir para VER o cardápio ou fotos, responda APENAS: [SEND_MENU_IMAGES]
-- Ao confirmar o pedido, use: [SAVE_ORDER: {"name": "Nome", "payment": "Forma", "location": "Local", "total": Valor, "items": [{"n": "Item", "p": Preço}]}]`;
+- Para ver cardápio/fotos: [SEND_MENU_IMAGES]
+- Para salvar pedido finalizado: [SAVE_ORDER: {"name": "...", "payment": "...", "location": "...", "total": 0, "items": [...]}]`;
+
+      const messagesForAI: any[] = [
+        { role: "system", content: systemPrompt },
+        ...history!.map(h => ({ role: h.role, content: h.content }))
+      ];
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userText }
-        ]
+        messages: messagesForAI
       });
       
       botReply = completion.choices[0]?.message?.content || "Desculpe, tive um problema para processar sua mensagem.";
+      
+      // Salvar resposta do assistente no histórico
+      await supabase.from('chat_history').insert([
+        { remote_jid: remoteJid, role: 'assistant', content: botReply }
+      ]);
     }
 
     // Enviar a resposta de volta usando Evolution API
