@@ -17,12 +17,40 @@ export default function DeliveryFeesPage() {
   // New item state
   const [newRegion, setNewRegion] = useState('');
   const [newCity, setNewCity] = useState('');
+  const [newCityId, setNewCityId] = useState('');
   const [newState, setNewState] = useState('SP');
   const [newFee, setNewFee] = useState('');
+
+  // API data
+  const [cities, setCities] = useState<any[]>([]);
+  const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
 
   useEffect(() => {
     fetchFees();
   }, []);
+
+  // Buscar cidades quando mudar o estado
+  useEffect(() => {
+    if (newState) {
+      setLoadingLocations(true);
+      fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${newState}/municipios`)
+        .then(res => res.json())
+        .then(data => {
+          setCities(data.sort((a: any, b: any) => a.nome.localeCompare(b.nome)));
+          setLoadingLocations(false);
+        });
+    }
+  }, [newState]);
+
+  // Buscar bairros quando mudar a cidade (usando ViaCEP ou similar para simular/complementar)
+  useEffect(() => {
+    if (newCity) {
+      // Nota: IBGE não tem API de bairros para todas as cidades de forma simples.
+      // Vou deixar o campo de bairro como um input com sugestões ou texto livre.
+      setNeighborhoods([]); 
+    }
+  }, [newCity]);
 
   const fetchFees = async () => {
     try {
@@ -38,7 +66,7 @@ export default function DeliveryFeesPage() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRegion || !newFee) return;
+    if (!newRegion || !newFee || !newCity) return;
 
     setSaving(true);
     try {
@@ -55,8 +83,6 @@ export default function DeliveryFeesPage() {
 
       if (res.ok) {
         setNewRegion('');
-        setNewCity('');
-        setNewFee('');
         fetchFees();
         setStatus({ type: 'success', message: 'Região adicionada com sucesso!' });
       }
@@ -117,8 +143,38 @@ export default function DeliveryFeesPage() {
           </div>
 
           <form onSubmit={handleAdd} style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.5rem' }}>
+              <div>
+                <label className="form-label">UF</label>
+                <select 
+                  className="form-input w-full" 
+                  value={newState}
+                  onChange={(e) => {
+                    setNewState(e.target.value);
+                    setNewCity('');
+                  }}
+                  style={{ height: '42px' }}
+                >
+                  {STATES.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Cidade {loadingLocations && <Loader2 className="animate-spin inline" size={12} />}</label>
+                <select 
+                  className="form-input w-full" 
+                  value={newCity}
+                  onChange={(e) => setNewCity(e.target.value)}
+                  style={{ height: '42px' }}
+                  required
+                >
+                  <option value="">Selecione a cidade</option>
+                  {cities.map(city => <option key={city.id} value={city.nome}>{city.nome}</option>)}
+                </select>
+              </div>
+            </div>
+
             <div>
-              <label className="form-label">Nome do Bairro/Região</label>
+              <label className="form-label">Bairro / Região de Entrega</label>
               <input 
                 type="text" 
                 className="form-input w-full" 
@@ -127,30 +183,9 @@ export default function DeliveryFeesPage() {
                 placeholder="Ex: Centro, Vila Mariana..."
                 required
               />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.5rem' }}>
-              <div>
-                <label className="form-label">Cidade</label>
-                <input 
-                  type="text" 
-                  className="form-input w-full" 
-                  value={newCity}
-                  onChange={(e) => setNewCity(e.target.value)}
-                  placeholder="Cidade"
-                />
-              </div>
-              <div>
-                <label className="form-label">UF</label>
-                <select 
-                  className="form-input w-full" 
-                  value={newState}
-                  onChange={(e) => setNewState(e.target.value)}
-                  style={{ height: '42px' }}
-                >
-                  {STATES.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                </select>
-              </div>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                Dica: Você pode colocar "Toda a Cidade" se o preço for único.
+              </p>
             </div>
 
             <div>
