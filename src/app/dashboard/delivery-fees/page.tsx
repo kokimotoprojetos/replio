@@ -43,14 +43,26 @@ export default function DeliveryFeesPage() {
     }
   }, [newState]);
 
-  // Buscar bairros quando mudar a cidade (usando ViaCEP ou similar para simular/complementar)
+  // Buscar bairros quando mudar a cidade
   useEffect(() => {
     if (newCity) {
-      // Nota: IBGE não tem API de bairros para todas as cidades de forma simples.
-      // Vou deixar o campo de bairro como um input com sugestões ou texto livre.
-      setNeighborhoods([]); 
+      const cityId = cities.find(c => c.nome === newCity)?.id;
+      if (cityId) {
+        setLoadingLocations(true);
+        fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/municipios/${cityId}/distritos`)
+          .then(res => res.json())
+          .then(data => {
+            // Filtra o nome da própria cidade se for o único resultado
+            const list = data.map((d: any) => d.nome).sort();
+            setNeighborhoods(list);
+            setLoadingLocations(false);
+          })
+          .catch(() => setLoadingLocations(false));
+      }
+    } else {
+      setNeighborhoods([]);
     }
-  }, [newCity]);
+  }, [newCity, cities]);
 
   const fetchFees = async () => {
     try {
@@ -175,16 +187,50 @@ export default function DeliveryFeesPage() {
 
             <div>
               <label className="form-label">Bairro / Região de Entrega</label>
-              <input 
-                type="text" 
-                className="form-input w-full" 
-                value={newRegion}
-                onChange={(e) => setNewRegion(e.target.value)}
-                placeholder="Ex: Centro, Vila Mariana..."
-                required
-              />
+              {neighborhoods.length > 0 ? (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <select 
+                    className="form-input w-full"
+                    value={newRegion}
+                    onChange={(e) => setNewRegion(e.target.value)}
+                    style={{ height: '42px' }}
+                    required
+                  >
+                    <option value="">Selecione o bairro</option>
+                    <option value="Toda a Cidade">Toda a Cidade (Preço Único)</option>
+                    {neighborhoods.map((n, idx) => (
+                      <option key={idx} value={n}>{n}</option>
+                    ))}
+                    <option value="OUTRO">-- Outro Bairro (Digitar) --</option>
+                  </select>
+                </div>
+              ) : (
+                <input 
+                  type="text" 
+                  className="form-input w-full" 
+                  value={newRegion}
+                  onChange={(e) => setNewRegion(e.target.value)}
+                  placeholder="Ex: Centro, Vila Mariana..."
+                  required
+                />
+              )}
+              
+              {newRegion === 'OUTRO' && (
+                <input 
+                  type="text" 
+                  className="form-input w-full" 
+                  style={{ marginTop: '0.5rem' }}
+                  onChange={(e) => setNewRegion(e.target.value)}
+                  placeholder="Digite o nome do bairro..."
+                  required
+                  autoFocus
+                />
+              )}
+
               <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                Dica: Você pode colocar "Toda a Cidade" se o preço for único.
+                {neighborhoods.length > 0 
+                  ? `${neighborhoods.length} bairros encontrados para esta cidade.` 
+                  : 'Nenhum bairro pré-carregado. Digite o nome manualmente.'}
               </p>
             </div>
 
