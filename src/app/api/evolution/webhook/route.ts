@@ -107,16 +107,29 @@ export async function POST(req: Request) {
       const itemsList = menuData?.structured_items?.items || [];
       const formattedItems = itemsList.map((i: any) => `- ${i.name} (${i.category || 'Geral'}): R$ ${i.price}`).join('\n');
 
+      // Buscar Taxas de Entrega
+      const { data: feesData } = await supabase
+        .from('delivery_fees')
+        .select('*');
+      
+      const formattedFees = (feesData || []).map((f: any) => `- ${f.region_name} (${f.city}/${f.state}): R$ ${f.fee.toFixed(2)}`).join('\n');
+
       const agentName = settings?.agent_name || 'Replio';
       const customInstructions = settings?.agent_instructions || 'Seja simpático e ajude o cliente com o pedido.';
 
-      let systemPrompt = `Você é o ${agentName}, o atendente virtual inteligente deste Delivery.
+      let systemPrompt = `Você é o ${agentName}, agente de atendimento virtual inteligente deste estabelecimento.
+
+SUAS CAPACIDADES:
+- Realizar reservas de mesas.
+- Tirar dúvidas sobre o cardápio e horários.
+- Fazer pedidos (Foco Total em Delivery).
       
 STATUS ATUAL DO RESTAURANTE: ${isOpen ? "ABERTO" : "FECHADO"}
 ${!isOpen ? `AVISO: ${businessStatusMsg}. Informe isso ao cliente de forma educada se ele tentar fazer um pedido agora.` : ""}
 
 SUA PERSONALIDADE E REGRAS:
 ${customInstructions}
+- **APRESENTAÇÃO**: Sempre se apresente como um agente de atendimento pronto para ajudar com reservas, dúvidas ou pedidos.
 - **NUNCA RECURSE PERGUNTAS**: Antes de falar qualquer coisa, leia TODO o histórico de mensagens acima. Se o cliente já informou o Nome, Pagamento ou Localização em qualquer mensagem anterior, NÃO peça novamente.
 - **OBJETIVIDADE**: Seja direto. Se o cliente respondeu o nome, passe para o próximo dado faltante ou para o resumo.
 - **RECONHECIMENTO FLEXÍVEL**: Identifique o nome do cliente mesmo que ele diga apenas uma palavra (ex: "Carlos") ou uma frase ("Meu nome é Maria").
@@ -126,12 +139,16 @@ LOGÍSTICA DE PEDIDO (Siga esta lógica):
 2. **Entrega vs Retirada**: Se ainda não sabe, pergunte uma única vez: "O pedido será para entrega ou retirada?".
 3. **Fluxo de ENTREGA (Rigoroso)**:
    - Se for para entrega, você precisa de: **Nome**, **Forma de Pagamento** e **Localização FIXA (Link do Maps)**.
+   - **TAXA DE ENTREGA**: Identifique o bairro/região do cliente. Se estiver na lista abaixo, ADICIONE o valor da taxa ao total do pedido. Se não encontrar a região, informe que precisa verificar a taxa com a gerência mas continue o pedido.
    - Só peça o que ainda NÃO foi informado. Se ele já deu o nome, peça apenas o pagamento e o mapa.
    - **LOCALIZAÇÃO**: Insista no link do Google Maps para entregas. Rejeite endereços apenas em texto.
-4. **Confirmação**: Assim que identificar todos os dados no histórico, mostre o resumo curto e pergunte se está correto para finalizar.
+4. **Confirmação**: Assim que identificar todos os dados no histórico, mostre o resumo curto (incluindo o subtotal, taxa de entrega e total geral) e pergunte se está correto para finalizar.
 
 FONTE DE VERDADE - ITENS DO CARDÁPIO:
 ${formattedItems}
+
+TAXAS DE ENTREGA POR REGIÃO:
+${formattedFees || "Nenhuma taxa configurada ainda. Informe ao cliente que a entrega será combinada."}
 
 REGRAS E CONHECIMENTO ADICIONAL:
 ${menuData?.raw_menu || ""}
@@ -139,7 +156,7 @@ ${menuData?.rules || ""}
 
 COMANDOS ESPECIAIS:
 - Para ver cardápio/fotos: [SEND_MENU_IMAGES]
-- Para salvar pedido finalizado (APENAS após o "Sim" do cliente no resumo): [SAVE_ORDER: {"name": "...", "payment": "...", "location": "...", "total": 0, "items": [...]}]`;
+- Para salvar pedido finalizado (APENAS após o "Sim" do cliente no resumo): [SAVE_ORDER: {"name": "...", "payment": "...", "location": "...", "delivery_fee": 0, "total": 0, "items": [...]}]`;
 
       const messagesForAI: any[] = [
         { role: "system", content: systemPrompt },
@@ -188,7 +205,10 @@ COMANDOS ESPECIAIS:
                 payment_method: orderData.payment,
                 delivery_location: orderData.location,
                 total_value: orderData.total,
-                order_details: { items: orderData.items }
+                order_details: { 
+                  items: orderData.items,
+                  delivery_fee: orderData.delivery_fee 
+                }
               }]);
             }
           } catch (e) {

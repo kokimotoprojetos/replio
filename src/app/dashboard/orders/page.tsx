@@ -32,6 +32,7 @@ export default function OrdersPage() {
       `*Localização:* ${order.delivery_location}\n\n` +
       `*ITENS:*\n` +
       (order.order_details?.items?.map((i: any) => `- ${i.n} (R$ ${i.p})`).join('\n') || '') +
+      (order.order_details?.delivery_fee ? `\n- Taxa de Entrega (R$ ${order.order_details.delivery_fee})` : '') +
       `\n\n*TOTAL: R$ ${order.total_value}*`;
     
     navigator.clipboard.writeText(text);
@@ -119,6 +120,12 @@ export default function OrdersPage() {
                        <span style={{ fontWeight: 600 }}>R$ {item.p}</span>
                     </div>
                   ))}
+                  {order.order_details?.delivery_fee > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', paddingTop: '0.5rem', borderTop: '2px dashed #ffffff10', marginTop: '0.5rem' }}>
+                       <span style={{ color: 'var(--text-secondary)' }}>Taxa de Entrega</span>
+                       <span style={{ fontWeight: 600 }}>R$ {order.order_details.delivery_fee}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Bot, Home, MessageSquare, Settings, QrCode, List, Globe, ShoppingBag } from 'lucide-react';
+import { Bot, Home, MessageSquare, Settings, QrCode, List, Globe, ShoppingBag, MapPin } from 'lucide-react';
 import { UserButton } from '@clerk/nextjs';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -32,6 +32,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
           <Link href="/dashboard/agent-settings" className="sidebar-link">
             <Bot size={18} /> Agente & Horários
+          </Link>
+          <Link href="/dashboard/delivery-fees" className="sidebar-link">
+            <MapPin size={18} /> Taxas e Regiões
           </Link>
           <Link href="/dashboard/settings" className="sidebar-link">
             <Settings size={18} /> Configurações
