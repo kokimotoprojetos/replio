@@ -20,6 +20,8 @@ export default function DeliveryFeesPage() {
   const [newCityId, setNewCityId] = useState('');
   const [newState, setNewState] = useState('SP');
   const [newFee, setNewFee] = useState('');
+  const [newCep, setNewCep] = useState('');
+  const [searchingCep, setSearchingCep] = useState(false);
 
   // API data
   const [cities, setCities] = useState<any[]>([]);
@@ -29,6 +31,29 @@ export default function DeliveryFeesPage() {
   useEffect(() => {
     fetchFees();
   }, []);
+
+  const handleCepSearch = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, '');
+    if (cleanCep.length !== 8) return;
+
+    setSearchingCep(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await res.json();
+      if (!data.erro) {
+        setNewState(data.uf);
+        setNewCity(data.localidade);
+        setNewRegion(data.bairro);
+        setStatus({ type: 'success', message: `Localizado: ${data.bairro}, ${data.localidade} - ${data.uf}` });
+      } else {
+        setStatus({ type: 'error', message: 'CEP não encontrado.' });
+      }
+    } catch (err) {
+      console.error('Erro ao buscar CEP:', err);
+    } finally {
+      setSearchingCep(false);
+    }
+  };
 
   // Buscar cidades quando mudar o estado
   useEffect(() => {
@@ -155,6 +180,27 @@ export default function DeliveryFeesPage() {
           </div>
 
           <form onSubmit={handleAdd} style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{ background: 'var(--bg-dark)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--border-color)' }}>
+              <label className="form-label">Busca Rápida por CEP</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input 
+                  type="text" 
+                  className="form-input w-full" 
+                  value={newCep}
+                  onChange={(e) => {
+                    setNewCep(e.target.value);
+                    if (e.target.value.length === 8) handleCepSearch(e.target.value);
+                  }}
+                  placeholder="00000-000"
+                  maxLength={9}
+                />
+                {searchingCep && <Loader2 className="animate-spin" size={18} style={{ marginTop: '0.5rem' }} />}
+              </div>
+              <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                Digite o CEP para preencher cidade e bairro automaticamente.
+              </p>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.5rem' }}>
               <div>
                 <label className="form-label">UF</label>
